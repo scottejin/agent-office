@@ -87,8 +87,54 @@ function shortCode(value) {
   return hashToken(value || 'local').toUpperCase();
 }
 
+function stripNoisyPrefixes(text) {
+  return String(text || '')
+    .replace(/^(?:\[[^\]]{1,32}\]\s*)+/g, '')
+    .replace(/^\s*(?:assistant|system|user|tool)\s*:\s*/i, '')
+    .replace(/^\s*(?:reply|replying|responding|response|final answer|analysis|context|note|update)\s*(?:to)?\s*[:\-]\s*/i, '')
+    .replace(/^\s*>+\s*/g, '')
+    .trim();
+}
+
+function pickUsefulChunk(text) {
+  const chunks = String(text || '')
+    .split(/\s*(?:\||•|—|–|->|=>|;)+\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!chunks.length) return '';
+
+  const noisyChunk =
+    /\b(reply|replied|channel|model|provider|tokens?|session|metadata|context|origin|surface|trace|thread|run id|session id)\b/i;
+  return chunks.find((chunk) => !noisyChunk.test(chunk)) || chunks[0];
+}
+
+function conciseText(text, max = 90) {
+  const cleaned = stripNoisyPrefixes(stripRawIds(text))
+    .replace(/`[^`]+`/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) return '';
+
+  const chunk = pickUsefulChunk(cleaned);
+  const firstSentence = chunk.split(/(?<=[.!?])\s+/).map((s) => s.trim()).find(Boolean) || chunk;
+  return shortText(firstSentence, max);
+}
+
 function cleanVisible(text, max = 90) {
-  return shortText(stripRawIds(text), max);
+  return conciseText(text, max);
+}
+
+function cleanProxyText(text, max = 44) {
+  const compact = conciseText(text, Math.max(max + 24, 80))
+    .replace(/^@[^\s:]+\s*/i, '')
+    .replace(/^\s*(?:re|fw|fwd)\s*:\s*/i, '')
+    .replace(/listening on https?:\/\/\S+/i, 'started local server')
+    .replace(/^[\]\[(){}<>\-:;,._\s]+/, '')
+    .trim();
+
+  return shortText(compact, max);
 }
 
 function sessionSubtitle(session, kind) {
@@ -238,11 +284,11 @@ async function extractSessionProxy(sessionFile) {
 
       if (event?.type === 'message') {
         const text = messageTextFromEvent(event);
-        if (text) return cleanVisible(firstLine(text));
+        if (text) return cleanProxyText(firstLine(text));
       }
 
       if (event?.type === 'toolCall' && event?.name) {
-        return cleanVisible(`Tool call: ${event.name}`);
+        return cleanProxyText(`Tool: ${event.name}`);
       }
     }
   } catch {
@@ -301,10 +347,11 @@ async function buildState() {
       lastActivityAt: mainCandidate.updatedAt,
       recency: recencyText(ageMs),
       activity: cleanVisible(
-        `Latest channel: ${mainCandidate.lastChannel || mainCandidate.origin?.surface || 'local'}`
+        `Latest channel: ${mainCandidate.lastChannel || mainCandidate.origin?.surface || 'local'}`,
+        54
       ),
-      summary: cleanVisible(mainCandidate.displayName || mainCandidate.origin?.label || 'Main control session'),
-      proxyText: proxy || 'No recent text event found in local JSONL tail.',
+      summary: cleanVisible(mainCandidate.displayName || mainCandidate.origin?.label || 'Main control session', 68),
+      proxyText: proxy || 'Awaiting local message',
       tags: [
         `model:${mainCandidate.model || 'unknown'}`,
         `provider:${mainCandidate.modelProvider || 'unknown'}`,
@@ -339,9 +386,9 @@ async function buildState() {
       status,
       lastActivityAt: updatedAt,
       recency: recencyText(ageMs),
-      activity: cleanVisible(firstLine(run.task) || 'Task requested by main agent.'),
-      summary: cleanVisible(`Requester: local session · Cleanup: ${run.cleanup || 'n/a'}`),
-      proxyText: proxy || cleanVisible(firstLine(run.task) || 'No child session text yet.'),
+      activity: cleanVisible(firstLine(run.task) || 'Task queued by main agent.', 54),
+      summary: cleanVisible(`Requester: local session · Cleanup: ${run.cleanup || 'n/a'}`, 68),
+      proxyText: proxy || cleanProxyText(firstLine(run.task) || 'Task queued'),
       tags: [
         `model:${run.model || 'unknown'}`,
         `timeout:${toNumber(run.runTimeoutSeconds, 0)}s`,
@@ -376,14 +423,16 @@ async function buildState() {
       recency: recencyText(ageMs),
       activity: cleanVisible(
         session.label ||
-          `Channel ${session.lastChannel || session.origin?.surface || 'unknown'} · ${session.lastTo || 'no target'}`
+          `Channel ${session.lastChannel || session.origin?.surface || 'unknown'} · ${session.lastTo || 'no target'}`,
+        54
       ),
       summary: cleanVisible(
         `Tokens: ${session.totalTokens ?? 'n/a'} · Model: ${session.model || 'unknown'} · Provider: ${
           session.modelProvider || 'unknown'
-        }`
+        }`,
+        68
       ),
-      proxyText: proxy || 'No recent text event found in local JSONL tail.',
+      proxyText: proxy || 'Awaiting local message',
       tags: [
         `kind:${kind}`,
         `channel:${session.lastChannel || session.origin?.surface || 'unknown'}`,

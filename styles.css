@@ -252,6 +252,12 @@ main {
   color: var(--green);
   font-size: 1.18rem;
   min-height: 50px;
+  line-height: 1.06;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .summary {
@@ -259,6 +265,11 @@ main {
   color: #bcd0e7;
   font-size: 0.82rem;
   line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .sticky-note {
@@ -269,8 +280,11 @@ main {
   border-radius: 8px;
   padding: 8px;
   font-size: 0.8rem;
-  line-height: 1.33;
-  transform: rotate(var(--note-rotate, -1.2deg));
+  line-height: 1.28;
+  min-height: 68px;
+  max-height: 68px;
+  overflow: hidden;
+  transform: rotate(var(--note-rotate, 0deg));
 }
 
 .thinking {

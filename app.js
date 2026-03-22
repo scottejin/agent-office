@@ -24,19 +24,20 @@ function hashString(value = '') {
 }
 
 function ranged(seed, min, max) {
-  const unit = (seed % 10_000) / 10_000;
-  return min + unit * (max - min);
+  const normalized = (seed >>> 0) / 0xffffffff;
+  return min + normalized * (max - min);
 }
 
 function layoutForEntity(entity, index) {
-  const seed = hashString(`${entity.id}:${entity.sessionKey || ''}:${index}`);
+  const root = `${entity.id}:${entity.sessionKey || ''}:${index}`;
   return {
     // Keep the randomized paper tilt subtle so the board feels intentional, not chaotic.
-    podRotate: ranged(seed, -0.8, 0.85).toFixed(2),
-    noteRotate: ranged(seed >> 3, -2.2, 2.25).toFixed(2),
-    x: ranged(seed >> 6, -8, 9).toFixed(1),
-    y: ranged(seed >> 9, -16, 14).toFixed(1),
-    z: 1 + (seed % 7),
+    podRotate: ranged(hashString(`${root}:pod`), -0.85, 0.85).toFixed(2),
+    // Sticky note tilt should swing gently on both sides of zero.
+    noteRotate: ranged(hashString(`${root}:note`), -2.4, 2.4).toFixed(2),
+    x: ranged(hashString(`${root}:x`), -8, 9).toFixed(1),
+    y: ranged(hashString(`${root}:y`), -16, 14).toFixed(1),
+    z: 1 + (hashString(`${root}:z`) % 7),
   };
 }
 
@@ -165,7 +166,7 @@ function renderEntities(entities) {
 
     node.querySelector('.activity').textContent = `> ${entity.activity}`;
     node.querySelector('.summary').textContent = entity.summary;
-    node.querySelector('.thinking').textContent = `🧾 ${entity.proxyText}`;
+    node.querySelector('.thinking').textContent = entity.proxyText;
 
     const workstreamEl = node.querySelector('.workstream');
     (entity.tags || []).forEach((item) => {
