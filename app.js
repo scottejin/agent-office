@@ -3,20 +3,119 @@ const template = document.getElementById('agentTemplate');
 const summaryList = document.getElementById('summaryList');
 const ticker = document.getElementById('ticker');
 const focusLine = document.getElementById('focusLine');
-const dataSource = document.getElementById('dataSource');
 
 let lastEntities = [];
 let focusIdx = 0;
 
+const LAYOUT_STORAGE_KEY = 'retro-ops-room-layout-v1';
+const manualLayout = loadManualLayout();
+
 function clearNode(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function hashString(value = '') {
+  let h = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    h ^= value.charCodeAt(i);
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+  return Math.abs(h >>> 0);
+}
+
+function ranged(seed, min, max) {
+  const unit = (seed % 10_000) / 10_000;
+  return min + unit * (max - min);
+}
+
+function layoutForEntity(entity, index) {
+  const seed = hashString(`${entity.id}:${entity.sessionKey || ''}:${index}`);
+  return {
+    podRotate: ranged(seed, -1.8, 1.9).toFixed(2),
+    noteRotate: ranged(seed >> 3, -5.5, 5.6).toFixed(2),
+    x: ranged(seed >> 6, -8, 9).toFixed(1),
+    y: ranged(seed >> 9, -16, 14).toFixed(1),
+    z: 1 + (seed % 7),
+  };
+}
+
+function loadManualLayout() {
+  try {
+    const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveManualLayout() {
+  try {
+    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(manualLayout));
+  } catch {
+    // ignore storage write errors (private mode, storage full, etc)
+  }
+}
+
+function attachDrag(pod, entityId) {
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let baseX = 0;
+  let baseY = 0;
+
+  pod.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+
+    pointerId = event.pointerId;
+    pod.setPointerCapture(pointerId);
+
+    const current = manualLayout[entityId] || { x: 0, y: 0 };
+    baseX = Number(current.x) || 0;
+    baseY = Number(current.y) || 0;
+    startX = event.clientX;
+    startY = event.clientY;
+
+    pod.classList.add('dragging');
+    pod.style.setProperty('--pod-z', '20');
+  });
+
+  pod.addEventListener('pointermove', (event) => {
+    if (pointerId !== event.pointerId) return;
+
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    const x = baseX + dx;
+    const y = baseY + dy;
+
+    manualLayout[entityId] = { x: Math.round(x), y: Math.round(y) };
+    pod.style.setProperty('--manual-x', `${Math.round(x)}px`);
+    pod.style.setProperty('--manual-y', `${Math.round(y)}px`);
+  });
+
+  const finish = (event) => {
+    if (pointerId !== event.pointerId) return;
+    pod.classList.remove('dragging');
+    pod.style.removeProperty('--pod-z');
+    try {
+      pod.releasePointerCapture(pointerId);
+    } catch {
+      // no-op
+    }
+    pointerId = null;
+    saveManualLayout();
+  };
+
+  pod.addEventListener('pointerup', finish);
+  pod.addEventListener('pointercancel', finish);
 }
 
 function renderEntities(entities) {
   clearNode(floorplan);
   const fragment = document.createDocumentFragment();
 
-  entities.forEach((entity) => {
+  entities.forEach((entity, index) => {
     const node = template.content.cloneNode(true);
 
     node.querySelector('.name').textContent = entity.name;
@@ -31,7 +130,7 @@ function renderEntities(entities) {
 
     node.querySelector('.activity').textContent = `> ${entity.activity}`;
     node.querySelector('.summary').textContent = entity.summary;
-    node.querySelector('.thinking').textContent = `🧾 ${entity.proxyLabel}: ${entity.proxyText}`;
+    node.querySelector('.thinking').textContent = `🧾 ${entity.proxyText}`;
 
     const workstreamEl = node.querySelector('.workstream');
     (entity.tags || []).forEach((item) => {
@@ -40,19 +139,39 @@ function renderEntities(entities) {
       workstreamEl.appendChild(pill);
     });
 
+    const pod = node.querySelector('.agent-pod');
+    pod.dataset.entityId = entity.id;
+
+    const layout = layoutForEntity(entity, index);
+    pod.style.setProperty('--pod-rotate', `${layout.podRotate}deg`);
+    pod.style.setProperty('--pod-x', `${layout.x}px`);
+    pod.style.setProperty('--pod-y', `${layout.y}px`);
+    pod.style.setProperty('--pod-z', String(layout.z));
+
+    const sticky = node.querySelector('.sticky-note');
+    sticky.style.setProperty('--note-rotate', `${layout.noteRotate}deg`);
+
+    const manual = manualLayout[entity.id];
+    if (manual) {
+      pod.style.setProperty('--manual-x', `${Number(manual.x) || 0}px`);
+      pod.style.setProperty('--manual-y', `${Number(manual.y) || 0}px`);
+    }
+
+    attachDrag(pod, entity.id);
+
     fragment.appendChild(node);
   });
 
   floorplan.appendChild(fragment);
 }
 
-function renderSummary(summary, source) {
+function renderSummary(summary) {
   const lines = [
     `${summary.total || 0} live entities on the floor`,
     `${summary.active || 0} active now`,
     `${summary.idle || 0} warm/idle`,
     `${summary.stale || 0} stale sessions`,
-    'Proxy text is from local JSONL logs (not hidden model thoughts).',
+    'Proxy text comes from local JSONL logs (not hidden model thoughts).',
   ];
 
   clearNode(summaryList);
@@ -61,8 +180,6 @@ function renderSummary(summary, source) {
     li.textContent = line;
     summaryList.appendChild(li);
   });
-
-  dataSource.textContent = `${source.note}`;
 }
 
 function renderTicker(entities) {
@@ -110,7 +227,7 @@ async function refresh() {
     lastEntities = payload.entities || [];
 
     renderEntities(lastEntities);
-    renderSummary(payload.summary || {}, payload.source || { note: '' });
+    renderSummary(payload.summary || {});
     renderTicker(lastEntities);
 
     if (!focusLine.textContent && lastEntities.length) {

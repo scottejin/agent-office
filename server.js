@@ -43,9 +43,56 @@ function shortText(text, max = 160) {
   return compact.length > max ? `${compact.slice(0, max - 1)}…` : compact;
 }
 
+function hashToken(text = '') {
+  let h = 0;
+  const value = String(text);
+  for (let i = 0; i < value.length; i += 1) {
+    h = (h * 31 + value.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h >>> 0).toString(36).slice(0, 3);
+}
+
+function shortenEntityName(rawName, uniqueFrom, max = 36) {
+  const cleaned = String(rawName || '')
+    .replace(/agent:main:/g, '')
+    .replace(/session[:\s]*/gi, '')
+    .replace(/subagent[:\s]*/gi, 'sub')
+    .replace(/\btelegram\b/gi, 'tg')
+    .replace(/\bdirect\b/gi, 'dm')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const base = cleaned || 'session';
+  if (base.length <= max) return base;
+
+  const suffix = hashToken(uniqueFrom || base);
+  const head = base.slice(0, Math.max(12, max - 5)).trimEnd();
+  return `${head}…#${suffix}`;
+}
+
+function localNickname(session) {
+  const kind = classifySessionKind(session.key || '', session);
+  const source = session.displayName || session.origin?.label || session.key || '';
+
+  let prefix = 'Session';
+  if (kind === 'telegram') prefix = 'TG';
+  else if (kind === 'subagent-session') prefix = 'Sub';
+  else if (kind === 'cron') prefix = 'Cron';
+  else if (kind === 'thread') prefix = 'Thread';
+
+  const short = shortenEntityName(source, session.sessionId || session.key, 28);
+  return `${prefix} · ${short}`;
+}
+
 function firstLine(text) {
   if (!text) return '';
   return String(text).split('\n').map((s) => s.trim()).find(Boolean) || '';
+}
+
+function shortRef(value, max = 16) {
+  const v = String(value || '').trim();
+  if (!v) return '';
+  return v.length > max ? `${v.slice(0, max - 1)}…` : v;
 }
 
 function recencyBucket(ageMs) {
@@ -193,18 +240,17 @@ async function buildState() {
 
     entities.push({
       id: 'agent-main',
-      name: 'Crab (Main Agent)',
+      name: 'Crab · Main',
       kind,
       kindLabel: labelForKind(kind),
       sessionKey: mainCandidate.key,
-      sessionId: mainCandidate.sessionId || '',
+      sessionId: shortRef(mainCandidate.sessionId || '', 14),
       type: classifySessionKind(mainCandidate.key, mainCandidate),
       status: recencyBucket(ageMs),
       lastActivityAt: mainCandidate.updatedAt,
       recency: recencyText(ageMs),
       activity: `Latest channel: ${mainCandidate.lastChannel || mainCandidate.origin?.surface || 'local'}`,
       summary: shortText(mainCandidate.displayName || mainCandidate.origin?.label || 'Main control session'),
-      proxyLabel: 'Local message proxy',
       proxyText: proxy || 'No recent text event found in local JSONL tail.',
       tags: [
         `model:${mainCandidate.model || 'unknown'}`,
@@ -230,11 +276,11 @@ async function buildState() {
 
     entities.push({
       id: `run:${run.runId}`,
-      name: `Subagent ${run.runId?.slice(0, 8) || 'unknown'}`,
+      name: `Sub · ${shortRef(run.runId, 10) || 'unknown'}`,
       kind: 'subagent-run',
       kindLabel: labelForKind('subagent-run'),
       sessionKey: run.childSessionKey || '',
-      sessionId: run.runId || '',
+      sessionId: shortRef(run.runId || '', 14),
       type: run.spawnMode || 'run',
       status,
       lastActivityAt: updatedAt,
@@ -243,7 +289,6 @@ async function buildState() {
       summary: shortText(
         `Requester: ${run.requesterDisplayKey || 'unknown'} · Cleanup: ${run.cleanup || 'n/a'}`
       ),
-      proxyLabel: 'Task/child-session proxy',
       proxyText: proxy || shortText(firstLine(run.task) || 'No child session text yet.'),
       tags: [
         `model:${run.model || 'unknown'}`,
@@ -263,11 +308,11 @@ async function buildState() {
 
     entities.push({
       id: `session:${session.sessionId || session.key}`,
-      name: shortText(session.displayName || session.origin?.label || session.key, 60),
+      name: localNickname(session),
       kind,
       kindLabel: labelForKind(kind),
       sessionKey: session.key,
-      sessionId: session.sessionId || '',
+      sessionId: shortRef(session.sessionId || session.key, 14),
       type: session.chatType || kind,
       status: recencyBucket(ageMs),
       lastActivityAt: session.updatedAt,
@@ -281,7 +326,6 @@ async function buildState() {
           session.modelProvider || 'unknown'
         }`
       ),
-      proxyLabel: 'Last message proxy',
       proxyText: proxy || 'No recent text event found in local JSONL tail.',
       tags: [
         `kind:${kind}`,

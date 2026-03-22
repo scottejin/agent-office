@@ -12,12 +12,15 @@ Local files only:
 
 The UI label **Activity Proxy** is intentionally honest: it shows recent local message/task snippets, not hidden model reasoning.
 
-## Run
+## Run (Node server only)
 
 ```bash
 cd /Users/crab/.openclaw/workspace/retro-ops-room
 node server.js
 ```
+
+Use the Node server above (it serves both the UI and `/api/state`).
+Do **not** use `python -m http.server` for this project.
 
 Default bind: `0.0.0.0:4173` (LAN-viewable)
 

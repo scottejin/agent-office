@@ -41,42 +41,15 @@ body {
 
 .top-bar {
   display: grid;
-  grid-template-columns: 320px 1fr 200px;
-  gap: 16px;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
   align-items: center;
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid #3d4861;
   background: linear-gradient(180deg, #1e2536 0%, #171d2a 100%);
   position: sticky;
   top: 0;
-  z-index: 3;
-}
-
-.brand-block {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.brand-block h1 {
-  margin: 0;
-  font-size: 1.15rem;
-  letter-spacing: 0.06em;
-}
-
-.muted {
-  color: var(--muted);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-}
-
-.red-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--red);
-  box-shadow: 0 0 12px var(--red);
+  z-index: 8;
 }
 
 .ticker-wrap {
@@ -84,7 +57,7 @@ body {
   background: #101521;
   border-radius: 10px;
   overflow: hidden;
-  height: 42px;
+  height: 46px;
   display: flex;
   align-items: center;
 }
@@ -92,10 +65,10 @@ body {
 .ticker {
   white-space: nowrap;
   font-family: VT323, monospace;
-  font-size: 1.65rem;
+  font-size: 1.62rem;
   color: var(--amber);
   padding-left: 100%;
-  animation: ticker 28s linear infinite;
+  animation: ticker 54s linear infinite;
 }
 
 @keyframes ticker {
@@ -109,6 +82,7 @@ body {
 
 .clock-block {
   text-align: right;
+  min-width: 168px;
 }
 
 .label {
@@ -128,12 +102,15 @@ main {
   grid-template-columns: 1fr 320px;
   gap: 18px;
   padding: 20px;
+  align-items: start;
 }
 
 .floorplan {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
-  gap: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  min-height: calc(100dvh - 140px);
+  position: relative;
 }
 
 .agent-pod {
@@ -146,11 +123,28 @@ main {
   flex-direction: column;
   gap: 12px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  flex: 1 1 320px;
+  min-width: 285px;
+  max-width: 390px;
+  margin: 12px;
+  z-index: var(--pod-z, 1);
+  cursor: grab;
+  touch-action: none;
+  transform: translate3d(
+      calc(var(--pod-x, 0px) + var(--manual-x, 0px)),
+      calc(var(--pod-y, 0px) + var(--manual-y, 0px)),
+      0
+    )
+    rotate(var(--pod-rotate, 0deg));
+}
+
+.agent-pod.dragging {
+  cursor: grabbing;
 }
 
 .agent-pod::before {
-  content: "";
+  content: '';
   position: absolute;
   right: -24px;
   top: -24px;
@@ -158,6 +152,7 @@ main {
   height: 80px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
 }
 
 .pod-header {
@@ -220,9 +215,9 @@ main {
 }
 
 .desk-top {
-  display: grid;
-  grid-template-columns: 1fr 108px;
-  gap: 10px;
+  position: relative;
+  min-height: 122px;
+  padding-right: 106px;
 }
 
 .monitor {
@@ -235,7 +230,7 @@ main {
 }
 
 .monitor::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(120deg, rgba(118, 178, 255, 0.16), transparent 35%);
@@ -265,11 +260,15 @@ main {
 }
 
 .sticky-note {
+  position: absolute;
+  right: -6px;
+  top: 10px;
+  width: 100px;
   border-radius: 8px;
   padding: 8px;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  transform: rotate(-1.2deg);
+  font-size: 0.8rem;
+  line-height: 1.33;
+  transform: rotate(var(--note-rotate, -1.2deg));
 }
 
 .thinking {
@@ -311,6 +310,8 @@ main {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: sticky;
+  top: 86px;
 }
 
 .panel-card {
@@ -346,13 +347,6 @@ main {
   min-height: 46px;
 }
 
-.source-line {
-  margin: 0;
-  color: #c4d8ee;
-  font-size: 0.88rem;
-  line-height: 1.35;
-}
-
 @media (max-width: 1020px) {
   .top-bar {
     grid-template-columns: 1fr;
@@ -364,5 +358,25 @@ main {
 
   main {
     grid-template-columns: 1fr;
+  }
+
+  .side-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .agent-pod {
+    min-width: 100%;
+    margin: 8px 0;
+  }
+
+  .desk-top {
+    padding-right: 96px;
+  }
+
+  .sticky-note {
+    width: 92px;
+    right: 0;
   }
 }

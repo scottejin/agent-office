@@ -16,12 +16,7 @@
     <div class="crt-overlay" aria-hidden="true"></div>
 
     <header class="top-bar">
-      <div class="brand-block">
-        <div class="red-dot"></div>
-        <h1>OPENCLAW OPS ROOM</h1>
-        <span class="muted">retro office mode · local state only</span>
-      </div>
-      <div class="ticker-wrap">
+      <div class="ticker-wrap" aria-label="Live activity ticker">
         <div id="ticker" class="ticker"></div>
       </div>
       <div class="clock-block">
@@ -31,7 +26,7 @@
     </header>
 
     <main>
-      <section class="floorplan" id="floorplan" aria-label="Agent desk floorplan"></section>
+      <section class="floorplan" id="floorplan" aria-label="Agent notes board"></section>
 
       <aside class="side-panel">
         <div class="panel-card">
@@ -41,10 +36,6 @@
         <div class="panel-card">
           <h2>Activity Proxy Feed</h2>
           <p id="focusLine" class="focus-line"></p>
-        </div>
-        <div class="panel-card">
-          <h2>Data Source</h2>
-          <p id="dataSource" class="source-line"></p>
         </div>
       </aside>
     </main>
