@@ -1,76 +1,41 @@
-const agents = [
-  {
-    id: "main",
-    name: "Crab (Main Agent)",
-    role: "Coordinator / user-facing assistant",
-    status: "active",
-    activity: "Orchestrating tasks + messaging Scott",
-    thinking: "Balancing speed, quality, and human-friendly output.",
-    workstream: ["Routing", "Decisions", "Final Replies"],
-  },
-  {
-    id: "sub-ops-01",
-    name: "Subagent Alpha",
-    role: "Frontend builder",
-    status: "active",
-    activity: "Designing retro ops dashboard UI",
-    thinking: "Need the desk pods to feel tactile, not flat.",
-    workstream: ["HTML", "CSS", "Micro-animations"],
-  },
-  {
-    id: "sub-ops-02",
-    name: "Subagent Bravo",
-    role: "Data wrangler",
-    status: "idle",
-    activity: "Preparing session summaries",
-    thinking: "Normalize status labels before rendering.",
-    workstream: ["JSON", "Summaries", "Transform"],
-  },
-  {
-    id: "sub-ops-03",
-    name: "Subagent Charlie",
-    role: "Quality / reviewer",
-    status: "active",
-    activity: "Checking visual clarity and readability",
-    thinking: "Contrast still matters in retro aesthetics.",
-    workstream: ["QA", "Accessibility", "Polish"],
-  },
-  {
-    id: "sub-ops-04",
-    name: "Subagent Delta",
-    role: "Infra runner",
-    status: "blocked",
-    activity: "Waiting for external API window",
-    thinking: "Hold position; retry when slot opens.",
-    workstream: ["Network", "Retries", "Queue"],
-  },
-];
+const floorplan = document.getElementById('floorplan');
+const template = document.getElementById('agentTemplate');
+const summaryList = document.getElementById('summaryList');
+const ticker = document.getElementById('ticker');
+const focusLine = document.getElementById('focusLine');
+const dataSource = document.getElementById('dataSource');
 
-const floorplan = document.getElementById("floorplan");
-const template = document.getElementById("agentTemplate");
-const summaryList = document.getElementById("summaryList");
-const ticker = document.getElementById("ticker");
-const focusLine = document.getElementById("focusLine");
+let lastEntities = [];
+let focusIdx = 0;
 
-function renderAgents() {
+function clearNode(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function renderEntities(entities) {
+  clearNode(floorplan);
   const fragment = document.createDocumentFragment();
 
-  agents.forEach((agent) => {
+  entities.forEach((entity) => {
     const node = template.content.cloneNode(true);
 
-    node.querySelector(".name").textContent = agent.name;
-    node.querySelector(".role").textContent = `${agent.role} • ${agent.id}`;
+    node.querySelector('.name').textContent = entity.name;
+    node.querySelector('.role').textContent = `${entity.kindLabel} • ${entity.sessionId || entity.id}`;
 
-    const statusEl = node.querySelector(".status");
-    statusEl.textContent = agent.status;
-    statusEl.classList.add(agent.status);
+    const statusEl = node.querySelector('.status');
+    statusEl.textContent = entity.status;
+    statusEl.classList.add(entity.status);
 
-    node.querySelector(".activity").textContent = `> ${agent.activity}`;
-    node.querySelector(".thinking").textContent = `🧠 ${agent.thinking}`;
+    const recencyEl = node.querySelector('.recency');
+    recencyEl.textContent = `last active ${entity.recency}`;
 
-    const workstreamEl = node.querySelector(".workstream");
-    agent.workstream.forEach((item) => {
-      const pill = document.createElement("span");
+    node.querySelector('.activity').textContent = `> ${entity.activity}`;
+    node.querySelector('.summary').textContent = entity.summary;
+    node.querySelector('.thinking').textContent = `🧾 ${entity.proxyLabel}: ${entity.proxyText}`;
+
+    const workstreamEl = node.querySelector('.workstream');
+    (entity.tags || []).forEach((item) => {
+      const pill = document.createElement('span');
       pill.textContent = item;
       workstreamEl.appendChild(pill);
     });
@@ -81,45 +46,42 @@ function renderAgents() {
   floorplan.appendChild(fragment);
 }
 
-function renderSummary() {
-  const counts = agents.reduce(
-    (acc, a) => {
-      acc.total += 1;
-      acc[a.status] += 1;
-      return acc;
-    },
-    { total: 0, active: 0, idle: 0, blocked: 0 }
-  );
-
+function renderSummary(summary, source) {
   const lines = [
-    `${counts.total} agents on the floor`,
-    `${counts.active} active at desks`,
-    `${counts.idle} on standby`,
-    `${counts.blocked} blocked / waiting`,
+    `${summary.total || 0} live entities on the floor`,
+    `${summary.active || 0} active now`,
+    `${summary.idle || 0} warm/idle`,
+    `${summary.stale || 0} stale sessions`,
+    'Proxy text is from local JSONL logs (not hidden model thoughts).',
   ];
 
-  summaryList.innerHTML = "";
+  clearNode(summaryList);
   lines.forEach((line) => {
-    const li = document.createElement("li");
+    const li = document.createElement('li');
     li.textContent = line;
     summaryList.appendChild(li);
   });
 
-  ticker.textContent = agents
-    .map((a) => `${a.name}: ${a.activity}`)
-    .join("  ✦  ");
+  dataSource.textContent = `${source.note}`;
+}
+
+function renderTicker(entities) {
+  ticker.textContent = entities
+    .slice(0, 10)
+    .map((e) => `${e.name}: ${e.activity}`)
+    .join('  ✦  ');
 }
 
 function startClock() {
-  const clockEl = document.getElementById("clock");
+  const clockEl = document.getElementById('clock');
   const update = () => {
     const now = new Date();
     clockEl.textContent = now.toLocaleString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
       hour12: false,
-      weekday: "short",
+      weekday: 'short',
     });
   };
   update();
@@ -127,19 +89,39 @@ function startClock() {
 }
 
 function rotateFocusLine() {
-  const thoughts = agents.map((a) => `${a.name} → ${a.thinking}`);
-  let i = 0;
+  setInterval(() => {
+    if (!lastEntities.length) {
+      focusLine.textContent = 'Waiting for local state…';
+      return;
+    }
 
-  const tick = () => {
-    focusLine.textContent = thoughts[i % thoughts.length];
-    i += 1;
-  };
-
-  tick();
-  setInterval(tick, 2800);
+    const e = lastEntities[focusIdx % lastEntities.length];
+    focusLine.textContent = `${e.name} → ${e.proxyText}`;
+    focusIdx += 1;
+  }, 3000);
 }
 
-renderAgents();
-renderSummary();
+async function refresh() {
+  try {
+    const response = await fetch('/api/state', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const payload = await response.json();
+    lastEntities = payload.entities || [];
+
+    renderEntities(lastEntities);
+    renderSummary(payload.summary || {}, payload.source || { note: '' });
+    renderTicker(lastEntities);
+
+    if (!focusLine.textContent && lastEntities.length) {
+      focusLine.textContent = `${lastEntities[0].name} → ${lastEntities[0].proxyText}`;
+    }
+  } catch (error) {
+    focusLine.textContent = `Local data read failed: ${error.message}`;
+  }
+}
+
 startClock();
 rotateFocusLine();
+refresh();
+setInterval(refresh, 15000);

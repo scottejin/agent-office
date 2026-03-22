@@ -1,21 +1,39 @@
 # Retro Agent Ops Room
 
-Playful local dashboard showing the main agent plus subagents as a retro operations office floor.
+Retro office dashboard that shows **real local OpenClaw activity** (main agent, subagent runs, and recent sessions) with no model/API calls needed for dashboard data.
 
-## Run locally
+## What data it uses
 
-From this workspace:
+Local files only:
+
+- `~/.openclaw/agents/main/sessions/sessions.json`
+- `~/.openclaw/subagents/runs.json`
+- session JSONL tails under `~/.openclaw/agents/main/sessions/*.jsonl`
+
+The UI label **Activity Proxy** is intentionally honest: it shows recent local message/task snippets, not hidden model reasoning.
+
+## Run
 
 ```bash
 cd /Users/crab/.openclaw/workspace/retro-ops-room
-python3 -m http.server 4173
+node server.js
 ```
 
-Then open:
+Default bind: `0.0.0.0:4173` (LAN-viewable)
 
-- http://localhost:4173
+Open:
+
+- Local: `http://localhost:4173`
+- LAN: `http://<this-mac-ip>:4173`
+
+Optional:
+
+```bash
+HOST=0.0.0.0 PORT=4173 node server.js
+```
 
 ## Notes
 
-- Main files: `index.html`, `styles.css`, `app.js`
-- Edit `agents` array in `app.js` to reflect your real agent/subagent roster and current activity.
+- Frontend polls `/api/state` every 15 seconds.
+- Backend is tiny and local-first (Node built-ins only, no npm install needed).
+- If local state files are missing, the API returns an error message and the UI shows it.

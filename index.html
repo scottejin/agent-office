@@ -19,7 +19,7 @@
       <div class="brand-block">
         <div class="red-dot"></div>
         <h1>OPENCLAW OPS ROOM</h1>
-        <span class="muted">retro office mode</span>
+        <span class="muted">retro office mode · local state only</span>
       </div>
       <div class="ticker-wrap">
         <div id="ticker" class="ticker"></div>
@@ -39,8 +39,12 @@
           <ul id="summaryList"></ul>
         </div>
         <div class="panel-card">
-          <h2>Now Thinking</h2>
+          <h2>Activity Proxy Feed</h2>
           <p id="focusLine" class="focus-line"></p>
+        </div>
+        <div class="panel-card">
+          <h2>Data Source</h2>
+          <p id="dataSource" class="source-line"></p>
         </div>
       </aside>
     </main>
@@ -52,19 +56,23 @@
             <h3 class="name"></h3>
             <p class="role"></p>
           </div>
-          <div class="status"></div>
+          <div>
+            <div class="status"></div>
+            <div class="recency"></div>
+          </div>
         </div>
 
         <div class="desk-top">
           <div class="monitor">
-            <div class="screen-label">CURRENT ACTIVITY</div>
+            <div class="screen-label">CURRENT/LAST ACTIVITY</div>
             <div class="activity"></div>
+            <div class="summary"></div>
           </div>
           <div class="sticky-note thinking"></div>
         </div>
 
         <div class="task-strip">
-          <span class="task-label">WORKSTREAM</span>
+          <span class="task-label">SESSION TAGS</span>
           <div class="workstream"></div>
         </div>
       </article>

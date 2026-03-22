@@ -206,6 +206,19 @@ main {
   border-color: #ffc8cf;
 }
 
+.status.stale {
+  color: #141927;
+  background: #8da6bb;
+  border-color: #d4e6f4;
+}
+
+.recency {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: #b8cade;
+  text-align: right;
+}
+
 .desk-top {
   display: grid;
   grid-template-columns: 1fr 108px;
@@ -242,6 +255,13 @@ main {
   color: var(--green);
   font-size: 1.18rem;
   min-height: 50px;
+}
+
+.summary {
+  margin-top: 8px;
+  color: #bcd0e7;
+  font-size: 0.82rem;
+  line-height: 1.3;
 }
 
 .sticky-note {
@@ -324,6 +344,13 @@ main {
   font-family: VT323, monospace;
   font-size: 1.45rem;
   min-height: 46px;
+}
+
+.source-line {
+  margin: 0;
+  color: #c4d8ee;
+  font-size: 0.88rem;
+  line-height: 1.35;
 }
 
 @media (max-width: 1020px) {
