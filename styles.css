@@ -210,15 +210,15 @@ main {
 
 .desk-top {
   position: relative;
-  min-height: 178px;
-  padding-right: 94px;
+  min-height: 222px;
+  padding-right: 150px;
 }
 
 .monitor {
   background: #121828;
   border: 1px solid #3e4a67;
   border-radius: 10px;
-  min-height: 162px;
+  min-height: 194px;
   padding: 12px;
   position: relative;
 }
@@ -266,16 +266,18 @@ main {
 
 .sticky-note {
   position: absolute;
-  right: -4px;
-  top: 12px;
-  width: 84px;
-  border-radius: 8px;
-  padding: 7px;
-  font-size: 0.72rem;
-  line-height: 1.24;
-  min-height: 58px;
-  max-height: 58px;
+  right: -6px;
+  top: 10px;
+  width: 136px;
+  border-radius: 9px;
+  padding: 10px;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  min-height: 108px;
+  max-height: 108px;
   overflow: hidden;
+  display: flex;
+  align-items: flex-start;
   transform: rotate(var(--note-rotate, 0deg));
 }
 
@@ -381,11 +383,18 @@ main {
   }
 
   .desk-top {
-    padding-right: 88px;
+    min-height: 210px;
+    padding-right: 138px;
+  }
+
+  .monitor {
+    min-height: 182px;
   }
 
   .sticky-note {
-    width: 78px;
+    width: 122px;
+    min-height: 96px;
+    max-height: 96px;
     right: 0;
   }
 }
