@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Ops Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="crt-overlay" aria-hidden="true"></div>
+
+    <header class="top-bar">
+      <div class="brand-block">
+        <div class="red-dot"></div>
+        <h1>OPENCLAW OPS ROOM</h1>
+        <span class="muted">retro office mode</span>
+      </div>
+      <div class="ticker-wrap">
+        <div id="ticker" class="ticker"></div>
+      </div>
+      <div class="clock-block">
+        <div class="label">LOCAL TIME</div>
+        <div id="clock" class="clock"></div>
+      </div>
+    </header>
+
+    <main>
+      <section class="floorplan" id="floorplan" aria-label="Agent desk floorplan"></section>
+
+      <aside class="side-panel">
+        <div class="panel-card">
+          <h2>Shift Summary</h2>
+          <ul id="summaryList"></ul>
+        </div>
+        <div class="panel-card">
+          <h2>Now Thinking</h2>
+          <p id="focusLine" class="focus-line"></p>
+        </div>
+      </aside>
+    </main>
+
+    <template id="agentTemplate">
+      <article class="agent-pod">
+        <div class="pod-header">
+          <div>
+            <h3 class="name"></h3>
+            <p class="role"></p>
+          </div>
+          <div class="status"></div>
+        </div>
+
+        <div class="desk-top">
+          <div class="monitor">
+            <div class="screen-label">CURRENT ACTIVITY</div>
+            <div class="activity"></div>
+          </div>
+          <div class="sticky-note thinking"></div>
+        </div>
+
+        <div class="task-strip">
+          <span class="task-label">WORKSTREAM</span>
+          <div class="workstream"></div>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
