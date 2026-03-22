@@ -118,16 +118,16 @@ main {
   border: 1px solid var(--pod-border);
   border-radius: 14px;
   box-shadow: var(--shadow);
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   position: relative;
   overflow: visible;
-  flex: 1 1 320px;
-  min-width: 285px;
-  max-width: 390px;
-  margin: 12px;
+  flex: 1 1 380px;
+  min-width: 340px;
+  max-width: 480px;
+  margin: 14px;
   z-index: var(--pod-z, 1);
   cursor: grab;
   touch-action: none;
@@ -146,15 +146,7 @@ main {
 }
 
 .agent-pod::before {
-  content: '';
-  position: absolute;
-  right: -24px;
-  top: -24px;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
+  content: none;
 }
 
 .pod-header {
@@ -218,16 +210,16 @@ main {
 
 .desk-top {
   position: relative;
-  min-height: 122px;
-  padding-right: 106px;
+  min-height: 178px;
+  padding-right: 94px;
 }
 
 .monitor {
   background: #121828;
   border: 1px solid #3e4a67;
   border-radius: 10px;
-  min-height: 108px;
-  padding: 10px;
+  min-height: 162px;
+  padding: 12px;
   position: relative;
 }
 
@@ -250,39 +242,39 @@ main {
 .activity {
   font-family: VT323, monospace;
   color: var(--green);
-  font-size: 1.18rem;
-  min-height: 50px;
-  line-height: 1.06;
+  font-size: 1.34rem;
+  min-height: 76px;
+  line-height: 1.08;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
 .summary {
-  margin-top: 8px;
+  margin-top: 10px;
   color: #bcd0e7;
-  font-size: 0.82rem;
-  line-height: 1.3;
+  font-size: 0.88rem;
+  line-height: 1.35;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
 .sticky-note {
   position: absolute;
-  right: -6px;
-  top: 10px;
-  width: 100px;
+  right: -4px;
+  top: 12px;
+  width: 84px;
   border-radius: 8px;
-  padding: 8px;
-  font-size: 0.8rem;
-  line-height: 1.28;
-  min-height: 68px;
-  max-height: 68px;
+  padding: 7px;
+  font-size: 0.72rem;
+  line-height: 1.24;
+  min-height: 58px;
+  max-height: 58px;
   overflow: hidden;
   transform: rotate(var(--note-rotate, 0deg));
 }
@@ -296,30 +288,31 @@ main {
 
 .task-strip {
   border-top: 1px dashed #61739a;
-  padding-top: 9px;
+  padding-top: 8px;
 }
 
 .task-label {
   color: #a8bdd7;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
+  font-size: 0.64rem;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .workstream {
-  margin-top: 6px;
+  margin-top: 5px;
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 .workstream span {
-  font-size: 0.75rem;
+  font-size: 0.64rem;
   color: #0f2338;
   background: #9bc9ff;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: 999px;
   border: 1px solid #cde5ff;
+  line-height: 1.05;
 }
 
 .side-panel {
@@ -388,11 +381,11 @@ main {
   }
 
   .desk-top {
-    padding-right: 96px;
+    padding-right: 88px;
   }
 
   .sticky-note {
-    width: 92px;
+    width: 78px;
     right: 0;
   }
 }
