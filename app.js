@@ -31,8 +31,9 @@ function ranged(seed, min, max) {
 function layoutForEntity(entity, index) {
   const seed = hashString(`${entity.id}:${entity.sessionKey || ''}:${index}`);
   return {
-    podRotate: ranged(seed, -1.8, 1.9).toFixed(2),
-    noteRotate: ranged(seed >> 3, -5.5, 5.6).toFixed(2),
+    // Keep the randomized paper tilt subtle so the board feels intentional, not chaotic.
+    podRotate: ranged(seed, -0.8, 0.85).toFixed(2),
+    noteRotate: ranged(seed >> 3, -2.2, 2.25).toFixed(2),
     x: ranged(seed >> 6, -8, 9).toFixed(1),
     y: ranged(seed >> 9, -16, 14).toFixed(1),
     z: 1 + (seed % 7),
@@ -64,16 +65,54 @@ function attachDrag(pod, entityId) {
   let startY = 0;
   let baseX = 0;
   let baseY = 0;
+  let liveX = 0;
+  let liveY = 0;
+  let rafId = null;
+
+  const flushPosition = () => {
+    rafId = null;
+    pod.style.setProperty('--manual-x', `${liveX.toFixed(1)}px`);
+    pod.style.setProperty('--manual-y', `${liveY.toFixed(1)}px`);
+  };
+
+  const queueFlush = () => {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(flushPosition);
+  };
+
+  const releaseDrag = () => {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+
+    pod.classList.remove('dragging');
+    pod.style.removeProperty('--pod-z');
+
+    if (pointerId !== null) {
+      try {
+        pod.releasePointerCapture(pointerId);
+      } catch {
+        // no-op
+      }
+    }
+
+    pointerId = null;
+    saveManualLayout();
+  };
 
   pod.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
 
+    event.preventDefault();
     pointerId = event.pointerId;
     pod.setPointerCapture(pointerId);
 
     const current = manualLayout[entityId] || { x: 0, y: 0 };
     baseX = Number(current.x) || 0;
     baseY = Number(current.y) || 0;
+    liveX = baseX;
+    liveY = baseY;
     startX = event.clientX;
     startY = event.clientY;
 
@@ -86,25 +125,19 @@ function attachDrag(pod, entityId) {
 
     const dx = event.clientX - startX;
     const dy = event.clientY - startY;
-    const x = baseX + dx;
-    const y = baseY + dy;
 
-    manualLayout[entityId] = { x: Math.round(x), y: Math.round(y) };
-    pod.style.setProperty('--manual-x', `${Math.round(x)}px`);
-    pod.style.setProperty('--manual-y', `${Math.round(y)}px`);
+    liveX = baseX + dx;
+    liveY = baseY + dy;
+
+    manualLayout[entityId] = { x: Number(liveX.toFixed(1)), y: Number(liveY.toFixed(1)) };
+    queueFlush();
   });
+
+  pod.addEventListener('lostpointercapture', releaseDrag);
 
   const finish = (event) => {
     if (pointerId !== event.pointerId) return;
-    pod.classList.remove('dragging');
-    pod.style.removeProperty('--pod-z');
-    try {
-      pod.releasePointerCapture(pointerId);
-    } catch {
-      // no-op
-    }
-    pointerId = null;
-    saveManualLayout();
+    releaseDrag();
   };
 
   pod.addEventListener('pointerup', finish);
@@ -119,7 +152,9 @@ function renderEntities(entities) {
     const node = template.content.cloneNode(true);
 
     node.querySelector('.name').textContent = entity.name;
-    node.querySelector('.role').textContent = `${entity.kindLabel} • ${entity.sessionId || entity.id}`;
+    node.querySelector('.role').textContent = entity.subtitle
+      ? `${entity.kindLabel} • ${entity.subtitle}`
+      : entity.kindLabel;
 
     const statusEl = node.querySelector('.status');
     statusEl.textContent = entity.status;

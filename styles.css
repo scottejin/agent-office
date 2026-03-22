@@ -131,6 +131,8 @@ main {
   z-index: var(--pod-z, 1);
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   transform: translate3d(
       calc(var(--pod-x, 0px) + var(--manual-x, 0px)),
       calc(var(--pod-y, 0px) + var(--manual-y, 0px)),

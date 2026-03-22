@@ -14,6 +14,7 @@ const PUBLIC_DIR = __dirname;
 const STATE_ROOT = path.join(process.env.HOME || '', '.openclaw');
 const SESSIONS_PATH = path.join(STATE_ROOT, 'agents', 'main', 'sessions', 'sessions.json');
 const RUNS_PATH = path.join(STATE_ROOT, 'subagents', 'runs.json');
+const CRON_VISIBILITY_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -52,36 +53,85 @@ function hashToken(text = '') {
   return Math.abs(h >>> 0).toString(36).slice(0, 3);
 }
 
+function stripRawIds(text) {
+  return String(text || '')
+    .replace(/\bagent:[^\s|,;]+/gi, '')
+    .replace(/\bcron:[^\s|,;]+/gi, '')
+    .replace(/\bsession:[^\s|,;]+/gi, '')
+    .replace(/\brun:[0-9a-f-]{8,}/gi, 'run')
+    .replace(/\bid:\d+/gi, '')
+    .replace(/telegram:\d+/gi, 'telegram dm')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f-]{27,}\b/gi, '')
+    .replace(/[|•]+\s*$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function shortenEntityName(rawName, uniqueFrom, max = 36) {
-  const cleaned = String(rawName || '')
-    .replace(/agent:main:/g, '')
+  const cleaned = stripRawIds(rawName)
+    .replace(/agent[:\s]*/gi, '')
     .replace(/session[:\s]*/gi, '')
-    .replace(/subagent[:\s]*/gi, 'sub')
-    .replace(/\btelegram\b/gi, 'tg')
-    .replace(/\bdirect\b/gi, 'dm')
+    .replace(/subagent[:\s]*/gi, 'subagent ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  const base = cleaned || 'session';
+  const base = cleaned || 'Session';
   if (base.length <= max) return base;
 
-  const suffix = hashToken(uniqueFrom || base);
+  const suffix = hashToken(uniqueFrom || base).toUpperCase();
   const head = base.slice(0, Math.max(12, max - 5)).trimEnd();
-  return `${head}…#${suffix}`;
+  return `${head}…${suffix}`;
+}
+
+function shortCode(value) {
+  return hashToken(value || 'local').toUpperCase();
+}
+
+function cleanVisible(text, max = 90) {
+  return shortText(stripRawIds(text), max);
+}
+
+function sessionSubtitle(session, kind) {
+  if (kind === 'telegram') return 'Local DM';
+  if (kind === 'cron') return 'Local schedule';
+  if (kind === 'subagent-session') return `Desk ${shortCode(session.sessionId || session.key)}`;
+  if (kind === 'thread') return 'Main thread';
+  if (kind === 'slack') return 'Workspace chat';
+  return 'Local session';
+}
+
+function cronTitle(session) {
+  const title = String(session?.label || session?.displayName || '')
+    .replace(/^cron:\s*/i, '')
+    .trim();
+  return cleanVisible(title, 34);
 }
 
 function localNickname(session) {
   const kind = classifySessionKind(session.key || '', session);
-  const source = session.displayName || session.origin?.label || session.key || '';
+  const fallbackSource = session.displayName || session.origin?.label || session.label || session.key || '';
 
-  let prefix = 'Session';
-  if (kind === 'telegram') prefix = 'TG';
-  else if (kind === 'subagent-session') prefix = 'Sub';
-  else if (kind === 'cron') prefix = 'Cron';
-  else if (kind === 'thread') prefix = 'Thread';
+  if (kind === 'telegram') {
+    const handle = shortenEntityName(fallbackSource, session.sessionId || session.key, 24);
+    return `Telegram · ${handle}`;
+  }
 
-  const short = shortenEntityName(source, session.sessionId || session.key, 28);
-  return `${prefix} · ${short}`;
+  if (kind === 'cron') {
+    const title = cronTitle(session);
+    return `Cron · ${title || `Job ${shortCode(session.key)}`}`;
+  }
+
+  if (kind === 'subagent-session') {
+    return `Subagent · Desk ${shortCode(session.sessionId || session.key)}`;
+  }
+
+  if (kind === 'thread') {
+    const short = shortenEntityName(fallbackSource, session.sessionId || session.key, 24);
+    return `Thread · ${short}`;
+  }
+
+  const short = shortenEntityName(fallbackSource, session.sessionId || session.key, 24);
+  return `Session · ${short}`;
 }
 
 function firstLine(text) {
@@ -188,11 +238,11 @@ async function extractSessionProxy(sessionFile) {
 
       if (event?.type === 'message') {
         const text = messageTextFromEvent(event);
-        if (text) return shortText(firstLine(text));
+        if (text) return cleanVisible(firstLine(text));
       }
 
       if (event?.type === 'toolCall' && event?.name) {
-        return shortText(`Tool call: ${event.name}`);
+        return cleanVisible(`Tool call: ${event.name}`);
       }
     }
   } catch {
@@ -241,6 +291,7 @@ async function buildState() {
     entities.push({
       id: 'agent-main',
       name: 'Crab · Main',
+      subtitle: 'Control room',
       kind,
       kindLabel: labelForKind(kind),
       sessionKey: mainCandidate.key,
@@ -249,8 +300,10 @@ async function buildState() {
       status: recencyBucket(ageMs),
       lastActivityAt: mainCandidate.updatedAt,
       recency: recencyText(ageMs),
-      activity: `Latest channel: ${mainCandidate.lastChannel || mainCandidate.origin?.surface || 'local'}`,
-      summary: shortText(mainCandidate.displayName || mainCandidate.origin?.label || 'Main control session'),
+      activity: cleanVisible(
+        `Latest channel: ${mainCandidate.lastChannel || mainCandidate.origin?.surface || 'local'}`
+      ),
+      summary: cleanVisible(mainCandidate.displayName || mainCandidate.origin?.label || 'Main control session'),
       proxyText: proxy || 'No recent text event found in local JSONL tail.',
       tags: [
         `model:${mainCandidate.model || 'unknown'}`,
@@ -276,7 +329,8 @@ async function buildState() {
 
     entities.push({
       id: `run:${run.runId}`,
-      name: `Sub · ${shortRef(run.runId, 10) || 'unknown'}`,
+      name: `Subagent · Desk ${shortCode(run.runId)}`,
+      subtitle: `Task ${shortCode(run.childSessionKey || run.runId)}`,
       kind: 'subagent-run',
       kindLabel: labelForKind('subagent-run'),
       sessionKey: run.childSessionKey || '',
@@ -285,11 +339,9 @@ async function buildState() {
       status,
       lastActivityAt: updatedAt,
       recency: recencyText(ageMs),
-      activity: shortText(firstLine(run.task) || 'Task requested by main agent.'),
-      summary: shortText(
-        `Requester: ${run.requesterDisplayKey || 'unknown'} · Cleanup: ${run.cleanup || 'n/a'}`
-      ),
-      proxyText: proxy || shortText(firstLine(run.task) || 'No child session text yet.'),
+      activity: cleanVisible(firstLine(run.task) || 'Task requested by main agent.'),
+      summary: cleanVisible(`Requester: local session · Cleanup: ${run.cleanup || 'n/a'}`),
+      proxyText: proxy || cleanVisible(firstLine(run.task) || 'No child session text yet.'),
       tags: [
         `model:${run.model || 'unknown'}`,
         `timeout:${toNumber(run.runTimeoutSeconds, 0)}s`,
@@ -298,17 +350,22 @@ async function buildState() {
     });
   }
 
-  const recentSessions = sessionEntries.slice(0, 10);
+  const recentSessions = sessionEntries.slice(0, 16);
   for (const session of recentSessions) {
     if (session.key === mainCandidate?.key) continue;
 
     const ageMs = Math.max(0, now - session.updatedAt);
     const kind = classifySessionKind(session.key, session);
+
+    // Hide stale cron jobs entirely from the board.
+    if (kind === 'cron' && ageMs > CRON_VISIBILITY_WINDOW_MS) continue;
+
     const proxy = await proxyFor(session.sessionFile);
 
     entities.push({
       id: `session:${session.sessionId || session.key}`,
       name: localNickname(session),
+      subtitle: sessionSubtitle(session, kind),
       kind,
       kindLabel: labelForKind(kind),
       sessionKey: session.key,
@@ -317,11 +374,11 @@ async function buildState() {
       status: recencyBucket(ageMs),
       lastActivityAt: session.updatedAt,
       recency: recencyText(ageMs),
-      activity: shortText(
+      activity: cleanVisible(
         session.label ||
           `Channel ${session.lastChannel || session.origin?.surface || 'unknown'} · ${session.lastTo || 'no target'}`
       ),
-      summary: shortText(
+      summary: cleanVisible(
         `Tokens: ${session.totalTokens ?? 'n/a'} · Model: ${session.model || 'unknown'} · Provider: ${
           session.modelProvider || 'unknown'
         }`
